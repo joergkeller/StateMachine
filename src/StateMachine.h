@@ -15,18 +15,21 @@
 #define INVALID_STATE -1
 #define INVALID_DURATION 0
 
-typedef void (*StateHandler)();
-typedef unsigned long (*TimeFunction)();
-typedef struct {
-  unsigned long maxDuration;
-  StateHandler  handler;
-} TimeoutHandler;
-
+template <class T>
 class StateMachine {
   public:
-    StateMachine(int stateCount, const char** names, TimeFunction millis) 
+    typedef void (T::*StateHandler)();
+    typedef unsigned long (*TimeFunction)();
+    typedef struct {
+      unsigned long maxDuration;
+      StateHandler  handler;
+    } TimeoutHandler;
+
+
+    StateMachine(T* callback, int stateCount, const char** names, TimeFunction millis) 
     : stateNames(names), 
       timeFunction(millis),
+      callbackInstance(callback),
       enterHandler(new StateHandler[stateCount]), 
       stateHandler(new StateHandler[stateCount]), 
       timeoutHandler(new TimeoutHandler[stateCount]), 
@@ -106,26 +109,26 @@ class StateMachine {
     void onEnterState(int newState) {
       Serial.print("\nEnter state "); Serial.println(stateName(newState));
       if (enterHandler[newState] != 0) {
-        enterHandler[newState]();
+        (callbackInstance->*(enterHandler[newState]))();
       }
     }
     
     void onLoopState(int state) {
       if (stateHandler[state] != 0) {
-        stateHandler[state]();
+        (callbackInstance->*(stateHandler[state]))();
       }
     }
     
     void onTimeoutState(int state) {
       Serial.print("Timeout state "); Serial.println(stateName(state));
       if (timeoutHandler[state].handler != 0) {
-        timeoutHandler[state].handler();
+        (callbackInstance->*(timeoutHandler[state].handler))();
       }
     }
     
     void onExitState(int oldState) {
       if (exitHandler[oldState] != 0) {
-        exitHandler[oldState]();
+        (callbackInstance->*(exitHandler[oldState]))();
       }
       Serial.print("Exit state "); Serial.println(stateName(oldState));
     }
@@ -135,6 +138,7 @@ class StateMachine {
     int currentState = INVALID_STATE;
     volatile int nextState = INVALID_STATE;
     const char** stateNames;
+    const T* callbackInstance;
     TimeFunction timeFunction;
     StateHandler* enterHandler;
     StateHandler* stateHandler;
