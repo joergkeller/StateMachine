@@ -56,6 +56,7 @@ class StateMachine {
 
     inline
     const char* stateName(int state) {
+      if (state == INVALID_STATE) return "-";
       return stateNames[state];
     }
 
