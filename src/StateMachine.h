@@ -15,6 +15,8 @@
 #define INVALID_STATE -1
 #define INVALID_DURATION 0
 
+#define DEBUG(str, val) { Serial.print(prefix); Serial.print(str); Serial.println(val); }
+
 template <class T>
 class StateMachine {
   public:
@@ -25,9 +27,9 @@ class StateMachine {
       StateHandler  handler;
     } TimeoutHandler;
 
-
-    StateMachine(T* callback, int stateCount, const char** names, TimeFunction millis) 
-    : stateNames(names), 
+    StateMachine(const char* name, const T* callback, int stateCount, const char** names, const TimeFunction millis)
+    : prefix(name),
+      stateNames(names),
       timeFunction(millis),
       callbackInstance(callback),
       enterHandler(new StateHandler[stateCount]), 
@@ -45,8 +47,7 @@ class StateMachine {
 
     void toState(int state) {
       if (nextState != INVALID_STATE) {
-        Serial.print("Error! Not processed state transition to ");
-        Serial.println(stateName(nextState));
+        DEBUG("Error! Not processed state transition to ", stateName(nextState));
       }
       nextState = state;
     }
@@ -108,7 +109,7 @@ class StateMachine {
     }
   
     void onEnterState(int newState) {
-      Serial.print("\nEnter state "); Serial.println(stateName(newState));
+      DEBUG("Enter state ", stateName(newState));
       if (enterHandler[newState] != 0) {
         (callbackInstance->*(enterHandler[newState]))();
       }
@@ -121,7 +122,7 @@ class StateMachine {
     }
     
     void onTimeoutState(int state) {
-      Serial.print("Timeout state "); Serial.println(stateName(state));
+      DEBUG("Timeout state ", stateName(state));
       if (timeoutHandler[state].handler != 0) {
         (callbackInstance->*(timeoutHandler[state].handler))();
       }
@@ -131,16 +132,17 @@ class StateMachine {
       if (exitHandler[oldState] != 0) {
         (callbackInstance->*(exitHandler[oldState]))();
       }
-      Serial.print("Exit state "); Serial.println(stateName(oldState));
+      DEBUG("Exit state ", stateName(oldState));
     }
 
   private:
+    const char* prefix;
     unsigned long startTime;
     int currentState = INVALID_STATE;
     volatile int nextState = INVALID_STATE;
     const char** stateNames;
     const T* callbackInstance;
-    TimeFunction timeFunction;
+    const TimeFunction timeFunction;
     StateHandler* enterHandler;
     StateHandler* stateHandler;
     TimeoutHandler* timeoutHandler;
